@@ -514,56 +514,6 @@ unt>                                              unt>
 ```
 
 
-
-#ケーススタディ
-
-ネットワーク作業シナリオ
-
-1. Pubril Peerを新規作成
-  - Router CPU/Memory Usage
-  - IF 確認
-  - ping IP address
-  - Traceroute
-  - Traffic Check
-  - show bgp summary
-  - show bgp neihbor
-  - スクリプトチェック
-    - Policyがないこと
-    - BGP 設定がないこと
-  - 設定
-    - Policy
-    - BGP neighber
-    - Filter open
-  - スクリプトチェック
-    - Policyが入っていること
-    - BGP 設定がはいっていること
-  - show bgp summary
-  - show bgp neighbor recived route
-  - show bgp neighbor advertised route
-  - Traffic check
-  - Traceroute
-  - Ping Test
-  - Router CPU/Memory Usage
-
-
-2. Private Peerを新規作成
-  - 1. に加えて以下を追加
-  - 設定
-   - Interface
-   - Interface up/donw check
-   - ping IP
-
-3. GWルータを新規構築
-  - OSPF check
-  - 設定
-    - Interface
-    - OSPF
-    - iBGP
-     - RR
-
-
-
-
 snapshot出力ファイルの設定を変更したい
 - /etc/jsnapy/snapshots/ の出力先ディレクトリを変更したい(作業順や対象がごちゃごちゃになる)
 - ファイル名に日付,日時を入れたい 
@@ -571,23 +521,3 @@ snapshot出力ファイルの設定を変更したい
 
 時間差でupしてくるようなものについてはどうチェックするか？
 10秒単位で見に行く？
-
-実践的なシチュエーションを考えてみる
-- １台のルータを設定作業する場合
-  - 設定はどうする？CLI? 別の自動ツール？ PyEzでやるならスクリプト？
-  - JSNAPyコマンドがよい or Python Scriptがよいかは、自分なりの結論を出すべき。
-- 複数台のルータを同時に作業する場合
- - 複数台のときはどうするのかいな？
- - でも複数台のルータをバージョン管理したいケースはあるはず。
-- 異なるベンダー装置で作業する場合
- - 運用者としての視点で必須
- - JSNAPyではおそらく無理なので、現実的な方法を考察/提案
- - そのサンプルコードまで実現できてるとGood
-
-
-#おまけ
-JSNAPyの裏はPyEZというJuniper公式Netconfツールが動いている。
-この仕組みを流用すれば、異なるデバイスで動かくことが可能。
-
-たとえば、フロントエンドをJSNAPy、裏をNapalmにすることで
-全部の機器を同じ手順書で実装可能、とか
