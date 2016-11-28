@@ -4,11 +4,15 @@
 firefly1
 - ge-0/0/0: DHCP
 - ge-0/0/1: 192.168.34.16/24
-- ge-0/0/2: 192.168.35.16/30
+- ge-0/0/2: 192.168.35.1/30
+- as_num: 65001
 firefly2
 - ge-0/0/0: DHCP
-- ge-0/0/1: 192.168.34.17/24
-- ge-0/0/2: 192.168.35.17/30
+- ge-0/0/1: 192.168.36.16/24
+    - セグメントがfirefly1と重複しているとうまくいかない？
+    -  もともと192.168.34.17/24を付けてたけど、上記に変更して上手くいった。
+- ge-0/0/2: 192.168.35.2/30
+- as_num: 65002
 MacBook Air(host)
 - vboxnet4: 192.168.34.1
 
@@ -53,15 +57,68 @@ set security zones security-zone trust interfaces ge-0/0/2.0 host-inbound-traffi
 # これいれて、やっと通信できた。。。
 
 #初期設定
-set system root-authentication plain-text-password
+    ( set system root-authentication plain-text-password )
+    ( set system login user user1 authentication plain-text-password )
+set system root-authentication encrypted-password "$1$wIdU4IBy$XV2B3LUKzHOf.VCbbcWus0"
 set system login user user1 class super-user
-set system login user user1 authentication plain-text-password
+set system login user user1 authentication encrypted-password "$1$1ABIAlLk$dTB8LJe00XWXe5GI/rjhO1"
 set security zones security-zone trust interfaces ge-0/0/1
 set security zones security-zone trust interfaces ge-0/0/2
 set security zones security-zone trust interfaces ge-0/0/1.0 host-inbound-traffic system-services all
 set security zones security-zone trust interfaces ge-0/0/2.0 host-inbound-traffic system-services all
 set system time-zone Asia/Tokyo
 set system services netconf ssh port 22
+
+# BGP設定
+set routing-options autonomous-system 65001
+set protocols bgp family inet unicast
+set protocols bgp group ge-0/0/2 type external
+set protocols bgp group ge-0/0/2 neighbor 192.168.35.2 peer-as 65002
+set protocols bgp group ge-0/0/2 export advertised_for_firefly2
+------
+set routing-options autonomous-system 65002
+set protocols bgp family inet unicast
+set protocols bgp group ge-0/0/2 type external
+set protocols bgp group ge-0/0/2 neighbor 192.168.35.1 peer-as 65001
+set protocols bgp group ge-0/0/2 export advertised_for_firefly1
+
+# 経路広告するためのstatic経路つくり
+set routing-options rib inet.0 static route 10.10.10.0/24 discard
+set routing-options rib inet.0 static route 10.10.20.0/24 discard
+set policy-options policy-statement advertised_for_firefly2 term 10 from route-filter 10.10.10.0/24 exact
+set policy-options policy-statement advertised_for_firefly2 term 10 then accept
+set policy-options policy-statement advertised_for_firefly2 term 999 then reject
+
+----
+set routing-options rib inet.0 static route 10.10.30.0/24 discard
+set routing-options rib inet.0 static route 10.10.40.0/24 discard
+set policy-options policy-statement advertised_for_firefly1 term 10 from route-filter 10.10.30.0/24 exact
+set policy-options policy-statement advertised_for_firefly1 term 10 then accept
+set policy-options policy-statement advertised_for_firefly1 term 999 then reject
+
+
+# Flow modeからpacket modeに切替
+delete security policies
+set security forwarding-options family inet6 mode packet-based
+set security forwarding-options family mpls mode packet-based
+
+# 再起動 (パケット転送モードの変更のため)
+run request system reboot
+
+
+# BGP用のフィルタ穴あけ?
+set firewall family inet filter ge-0/0/2 term bgp from source-address 192.168.35.x/32
+set firewall family inet filter ge-0/0/2 term bgp from protocol tcp
+set firewall family inet filter ge-0/0/2 term bgp from destination-port bgp
+set firewall family inet filter ge-0/0/2 term bgp then accept
+set firewall family inet filter ge-0/0/2 term tcp-established from protocol tcp
+set firewall family inet filter ge-0/0/2 term tcp-established from tcp-established
+set firewall family inet filter ge-0/0/2 term tcp-established then accept
+
+
+
+# 上記のフィルタ削除
+delete firewall family inet filter ge-0/0/2
 
 
 
@@ -77,6 +134,21 @@ ping 192.168.33.1
 ping 192.168.34.16
 ping 192.168.34.17
 
+
+# firefly 同士でBGPが貼れない
+これが必要
+https://www.juniper.net/assets/jp/jp/local/pdf/others/usecase_firefly_router.pdf
+
+delete security policies
+set security forwarding-options family inet6 mode packet-based
+set security forwarding-options family mpls mode packet-based
+
+ これはだめ　delete security
+ 
+なんばさんの記事を参考にしました。
+http://blog.bit-isle.jp/tech/2014/08/112
+
+mplsでOK??
 
 
 # Mac側での準備
@@ -152,6 +224,13 @@ debug1: Enabling compatibility mode for protocol 2.0
 debug1: Local version string SSH-2.0-OpenSSH_6.9
 ssh_exchange_identification: read: Connection reset by peer
 ```
+
+もしかしたら、fireflyを同時に2台たちあげたときのみ事象が発生する？？
+(IPが同じセグメントに存在しているのがよくないしてる？？)
+でも必ず発生するわけではない。
+MacBookを再起動したら、発生しないときもある。
+
+MacBook固有の問題か？？？
 
 # JSNAPyをプログラム上で実行するときにログを出さないようにする。
 ```
