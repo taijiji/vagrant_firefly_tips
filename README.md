@@ -48,14 +48,19 @@ http://labs.septeni.co.jp/entry/20140707/1404670069
 
 fireflyではVagrantFileで作ったinterfaceはデフォルトuntrustになっていて、通信できないようにしされている
 とりあえずtrustにしてあげることで、全通信を許可させる
+
+```
 set security zones security-zone trust interfaces ge-0/0/1
 set security zones security-zone trust interfaces ge-0/0/2
 set security zones security-zone trust interfaces ge-0/0/1.0 host-inbound-traffic system-services ssh
 set security zones security-zone trust interfaces ge-0/0/1.0 host-inbound-traffic system-services ping
 set security zones security-zone trust interfaces ge-0/0/2.0 host-inbound-traffic system-services bgp
 set security zones security-zone trust interfaces ge-0/0/2.0 host-inbound-traffic system-services ping
+```
+
 # これいれて、やっと通信できた。。。
 
+```
 #初期設定
     ( set system root-authentication plain-text-password )
     ( set system login user user1 authentication plain-text-password )
@@ -68,8 +73,10 @@ set security zones security-zone trust interfaces ge-0/0/1.0 host-inbound-traffi
 set security zones security-zone trust interfaces ge-0/0/2.0 host-inbound-traffic system-services all
 set system time-zone Asia/Tokyo
 set system services netconf ssh port 22
+```
 
 # BGP設定
+```
 set routing-options autonomous-system 65001
 set protocols bgp family inet unicast
 set protocols bgp group ge-0/0/2 type external
@@ -81,8 +88,11 @@ set protocols bgp family inet unicast
 set protocols bgp group ge-0/0/2 type external
 set protocols bgp group ge-0/0/2 neighbor 192.168.35.1 peer-as 65001
 set protocols bgp group ge-0/0/2 export advertised_for_firefly1
+```
 
 # 経路広告するためのstatic経路つくり
+
+```
 set routing-options rib inet.0 static route 10.10.10.0/24 discard
 set routing-options rib inet.0 static route 10.10.20.0/24 discard
 set policy-options policy-statement advertised_for_firefly2 term 10 from route-filter 10.10.10.0/24 exact
@@ -119,11 +129,13 @@ set firewall family inet filter ge-0/0/2 term tcp-established then accept
 
 # 上記のフィルタ削除
 delete firewall family inet filter ge-0/0/2
-
+```
 
 
 
 コマンド
+
+```
 vagrant ssh firefly1
 vagrant ssh firefly2
 ping 192.168.34.16
@@ -133,15 +145,18 @@ ping 192.168.33.1
 
 ping 192.168.34.16
 ping 192.168.34.17
+```
 
 
 # firefly 同士でBGPが貼れない
 これが必要
 https://www.juniper.net/assets/jp/jp/local/pdf/others/usecase_firefly_router.pdf
 
+```
 delete security policies
 set security forwarding-options family inet6 mode packet-based
 set security forwarding-options family mpls mode packet-based
+```
 
  これはだめ　delete security
  
@@ -153,6 +168,7 @@ mplsでOK??
 
 # Mac側での準備
 pip install junos-eznc
+
 ```:うまくいかない
 *********************************************************************************
 
@@ -171,7 +187,10 @@ Storing debug log for failure in /Users/taiji/Library/Logs/pip.log
 ```
 
 これでうまくいった。
+
+```
 xcode-select --install                                                
+```
 
 # 問題: sshパスワード認証でログインしようとすると、mac側に公開鍵を聞かれる。ツールでアクセスできない。
 mac側の秘密鍵をキーチェインに登録しておく(Mac限定)
@@ -180,12 +199,14 @@ ssh-add -K ~/.ssh/id_rsa
 
 ここに足してみることでいけた
 
+```
 vi /Users/taiji/.ssh/config
 Host 192.168.34.16
   HostName 192.168.34.16
   IdentityFile      /Users/taiji/.vagrant.d/insecure_private_key
   User user1
   PasswordAuthentication no
+```
 
 ただしまだツールではうまくアクセスできない
 
@@ -195,6 +216,7 @@ http://forums.juniper.net/t5/Automation/Scripting-How-To-Junos-NETCONF-and-SSH-P
 
 
 #問題 MAC->fireflyへSSHできなくなった。
+
 ```
 % ssh -vvv user1@192.168.34.16
 OpenSSH_6.9p1, LibreSSL 2.1.8
@@ -233,6 +255,7 @@ MacBookを再起動したら、発生しないときもある。
 MacBook固有の問題か？？？
 
 # JSNAPyをプログラム上で実行するときにログを出さないようにする。
+
 ```
 vi /etc/jsnapy/logging.yml
 　61 root:
